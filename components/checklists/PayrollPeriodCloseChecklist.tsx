@@ -51,7 +51,7 @@ export function PayrollPeriodCloseChecklist({
       className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-6"
       data-testid="payroll-period-close-checklist"
     >
-      {/* Header */}
+      
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
         <div>
           <h3 className="text-base font-bold text-gray-900">
@@ -81,7 +81,7 @@ export function PayrollPeriodCloseChecklist({
         </div>
       </div>
 
-      {/* Progress Bar */}
+      
       <div className="space-y-2">
         <div className="flex justify-between text-xs font-medium text-gray-700">
           <span>Completion Progress</span>
@@ -98,7 +98,7 @@ export function PayrollPeriodCloseChecklist({
         </div>
       </div>
 
-      {/* Checklist Grid */}
+      
       <div className="space-y-3">
         {checklist.items.map((item: PeriodCloseChecklistItem) => {
           const IconComponent = CATEGORY_ICONS[item.category] || CheckCircle2;
@@ -142,7 +142,7 @@ export function PayrollPeriodCloseChecklist({
         })}
       </div>
 
-      {/* Confirmation Dialog / Action Area */}
+    
       {!isClosed && (
         <div className="pt-4 border-t border-gray-100 flex justify-end">
           <button
@@ -162,7 +162,7 @@ export function PayrollPeriodCloseChecklist({
         </div>
       )}
 
-      {/* Confirmation Modal */}
+     
       {showConfirm && (
         <div
           className="rounded-lg border-2 border-indigo-200 bg-indigo-50/80 p-5 space-y-3"
