@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -26,6 +27,8 @@ export interface AmendmentApprovalProps {
   amendmentId: string;
   amendment?: SalaryCommitmentAmendment | null;
   initialState?: LoadState;
+  /** Optional approval adapter; the default remains the existing local simulation. */
+  onApprove?: (id: string) => Promise<void>;
 }
 
 // Post-submission adjustment limits applied in the dashboard layer.
@@ -79,6 +82,7 @@ export function AmendmentApproval({
   amendmentId,
   amendment: propAmendment,
   initialState,
+  onApprove,
 }: AmendmentApprovalProps) {
   const [amendment, setAmendment] = useState<SalaryCommitmentAmendment | null | undefined>(
     propAmendment !== undefined ? propAmendment : undefined,
@@ -98,11 +102,22 @@ export function AmendmentApproval({
         : "loading"),
   );
   const [approvalError, setApprovalError] = useState<string | null>(null);
+  // State cannot guard repeated calls before React commits the pending screen.
+  const approvalRequest = useRef<symbol | null>(null);
+
+  useEffect(() => {
+    setApprovalError(null);
+    return () => {
+      // A response for an old route (or an unmounted screen) cannot update this one.
+      approvalRequest.current = null;
+    };
+  }, [amendmentId]);
 
   useEffect(() => {
     if (propAmendment !== undefined) {
       setAmendment(propAmendment);
       if (initialState) return;
+      if (approvalRequest.current !== null) return;
       if (propAmendment === null) setState("empty");
       else if (propAmendment) {
         const v = validateAmendmentPlan(propAmendment);
@@ -144,9 +159,35 @@ export function AmendmentApproval({
   }, [amendment]);
 
   const handleApprove = async () => {
-    if (!amendment) return;
+    if (
+      approvalRequest.current !== null ||
+      state !== "loaded" ||
+      !amendment ||
+      amendment.id !== amendmentId
+    ) return;
     const validation = validateAmendmentPlan(amendment);
     if (!validation.canApprove) return;
+
+    const request = Symbol("approval");
+    approvalRequest.current = request;
+    setState("approving");
+    setApprovalError(null);
+    try {
+      if (onApprove) {
+        await onApprove(amendment.id);
+      } else {
+        // Preserve the demo flow; no wallet signing or network call is introduced.
+        await new Promise<void>((resolve) => setTimeout(resolve, 600));
+      }
+      if (approvalRequest.current === request) setState("approved");
+    } catch {
+      if (approvalRequest.current === request) {
+        // Do not surface provider errors: they may contain private payroll data.
+        setApprovalError("Could not approve the amendment. Please try again.");
+        setState("loaded");
+      }
+    } finally {
+      if (approvalRequest.current === request) approvalRequest.current = null;
     const limits = evaluateAdjustmentLimits(amendment);
     if (!limits.isAllowed) {
       setApprovalError(limits.reason ?? "Adjustment limit blocked approval.");
@@ -170,6 +211,9 @@ export function AmendmentApproval({
     return (
       <div
         data-testid={state === "approving" ? "amendment-approving" : "amendment-approval-loading"}
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
         aria-label={state === "approving" ? "Approving amendment" : "Loading approval screen"}
         className="space-y-4"
       >
@@ -179,6 +223,11 @@ export function AmendmentApproval({
           <div className="h-24 bg-gray-100 rounded" />
           <div className="h-10 bg-gray-200 rounded w-40" />
         </div>
+        {state === "approving" && (
+          <button type="button" disabled className="px-4 py-2 rounded-md bg-gray-100 text-gray-500 text-sm">
+            Approving amendment...
+          </button>
+        )}
       </div>
     );
   }
